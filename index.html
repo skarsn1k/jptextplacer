@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本語のダミーテキストプレースホルダー</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .dummy-text {
+            font-size: 1px;
+            color: transparent;
+        }
+        .buttons-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+        .main-button {
+            font-size: 12px; 
+            padding: 8px 8px; 
+            margin: 2.5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #content {
+            width: 80%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .txt-content {
+            margin: 0 10px;
+        }
+        .scroll-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .dark-mode {
+            background-color: #121212;
+            color: #d3d3d3;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="dummy-text">ダミーテキストダミーテキストダミーテキストダミーテキストダミーテキストダミーテキストダミーテキストダミーテキストダミーテキストダミーテキスト</h1>
+    <div class="buttons-container">
+        <button class="main-button" id="info-button">ⓘ</button>
+        <button class="main-button" id="clipboard-button">📋</button>
+        <button class="main-button" id="html-button">HTML</button>
+        <button class="main-button" id="webarchive-button">Webarchive</button>
+        <button class="main-button" id="txt-button">TXT</button>
+        <button class="main-button" id="img-button">IMG</button>
+        <button class="main-button" id="dark-mode-button">🌓︎</button>
+    </div>
+    <div id="content-container">
+        <p style="text-align: center;">보이지 않는 일본어 더미 텍스트가 배치된 상태로<br>해당 파일을 표시할 수 있습니다.</p>
+    </div>
+    <div id="content"></div>
+    <button class="scroll-to-top" id="scroll-to-top">▲</button>
+
+<script>
+(function() {
+    const contentContainer = document.getElementById('content-container');
+    const scrollToTopButton = document.getElementById('scroll-to-top');
+
+    function handleButtonClick(event) {
+        if (event.target.classList.contains('main-button')) {
+            const buttonId = event.target.id;
+            switch (buttonId) {
+                case 'html-button':
+                case 'webarchive-button':
+                case 'txt-button':
+                case 'img-button':
+                    createFileInput(getFileType(buttonId), handleFileLoad);
+                    break;
+                case 'dark-mode-button':
+                    document.body.classList.toggle('dark-mode');
+                    break;
+                case 'info-button':
+                    showInfo();
+                    break;
+                case 'clipboard-button':
+                    handleClipboardPaste();
+                    break;
+            }
+        }
+    }
+
+    function getFileType(buttonId) {
+        const fileTypes = {
+            'html-button': '.html,.htm',
+            'webarchive-button': '.webarchive',
+            'txt-button': '.txt',
+            'img-button': 'image/*'
+        };
+        return fileTypes[buttonId];
+    }
+
+    function createFileInput(accept, onLoad) {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = accept;
+        fileInput.multiple = accept === 'image/*';
+        fileInput.addEventListener('change', onLoad);
+        fileInput.click();
+    }
+
+    async function handleFileLoad(event) {
+        const files = Array.from(event.target.files);
+        const fileType = event.target.accept;
+
+        if (fileType === 'image/*') {
+            await loadImages(files);
+        } else {
+            const file = files[0];
+            const content = await readFile(file);
+            displayContent(content, fileType);
+        }
+    }
+
+    function readFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function displayContent(content, fileType) {
+        switch (fileType) {
+            case '.html,.htm':
+                contentContainer.innerHTML = new TextDecoder().decode(content);
+                break;
+            case '.webarchive':
+                displayWebArchive(content);
+                break;
+            case '.txt':
+                displayTextContent(content);
+                break;
+        }
+    }
+
+    async function displayWebArchive(content) {
+        try {
+            const archive = new WebArchive(content);
+            const htmlContent = await archive.extract();
+            contentContainer.innerHTML = htmlContent;
+        } catch (error) {
+            console.error('Error extracting webarchive:', error);
+            alert('Failed to extract webarchive.');
+        }
+    }
+
+    function displayTextContent(content) {
+        const text = new TextDecoder().decode(content);
+        const paragraphs = text.split('\n').map(p => `<p>${p}</p>`).join('');
+        contentContainer.innerHTML = `
+            <div style="display: flex; justify-content: center;">
+                <button class="main-button" onclick="changeFontSize(1)">&nbsp;&nbsp;T+&nbsp;&nbsp;</button>
+                <button class="main-button" onclick="changeFontSize(-1)">&nbsp;&nbsp;T−&nbsp;&nbsp;</button>
+            </div>
+            <div id="output" class="txt-content">${paragraphs}</div>`;
+    }
+
+    async function loadImages(files) {
+        contentContainer.innerHTML = '';
+        const sortedFiles = files.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+        
+        for (const file of sortedFiles) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            img.title = file.name;
+            img.loading = 'lazy';
+            contentContainer.appendChild(img);
+        }
+    }
+
+    function showInfo() {
+        contentContainer.innerHTML = '<p style="text-align: center;">보이지 않는 일본어 더미 텍스트가 배치된 상태로<br>해당 파일을 표시할 수 있습니다.</p>';
+    }
+
+async function handleClipboardPaste() {
+    try {
+        const clipboardContent = await navigator.clipboard.readText();
+        contentContainer.innerHTML = clipboardContent;
+        setTimeout(() => {
+            applyImageStyles();
+        }, 0);
+    } catch (err) {
+        console.error('Failed to read clipboard contents: ', err);
+        alert('클립보드 내용을 읽는 데 실패했습니다. 권한이 있는지 확인해 주세요.');
+    }
+}
+
+function applyImageStyles() {
+    const images = contentContainer.querySelectorAll('img');
+    images.forEach(img => {
+        img.style.width = '100%';
+        img.style.height = 'auto';
+    });
+}
+
+    document.querySelector('.buttons-container').addEventListener('click', handleButtonClick);
+
+    window.addEventListener('scroll', () => {
+        scrollToTopButton.style.display = window.scrollY > 200 ? 'flex' : 'none';
+    });
+
+    scrollToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+    window.changeFontSize = function(delta) {
+        const output = document.getElementById('output');
+        const style = window.getComputedStyle(output, null).getPropertyValue('font-size');
+        output.style.fontSize = `${parseFloat(style) + delta}px`;
+    };
+
+    class WebArchive {
+        constructor(arrayBuffer) {
+            this.arrayBuffer = arrayBuffer;
+        }
+
+        async extract() {
+            const text = new TextDecoder().decode(this.arrayBuffer);
+            const resourcesText = text.substring(text.indexOf('WebResourceMIMEType'), text.lastIndexOf('WebResourceMIMEType'));
+            const resources = this.extractResources(resourcesText);
+            let htmlContent = text.substring(text.indexOf('<html'), text.indexOf('</html>') + 7);
+            
+            for (const [path, resource] of Object.entries(resources)) {
+                const regex = new RegExp(`src=["']${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'g');
+                htmlContent = htmlContent.replace(regex, `src="${resource}"`);
+            }
+
+            return htmlContent;
+        }
+
+        extractResources(resourcesText) {
+            const resources = {};
+            const resourceRegex = /WebResourceMIMEType([^<]+)<\/string>[^<]+<key>WebResourceURL<\/key>[^<]+<string>([^<]+)<\/string>[^<]+<key>WebResourceData<\/key>[^<]+<data>([^<]+)<\/data>/g;
+            
+            let match;
+            while ((match = resourceRegex.exec(resourcesText)) !== null) {
+                const mimeType = match[1].trim();
+                const path = match[2];
+                const data = match[3];
+
+                if (mimeType.startsWith('image/')) {
+                    resources[path] = `data:${mimeType};base64,${data}`;
+                }
+            }
+
+            return resources;
+        }
+    }
+})();
+</script>
+</body>
+</html>
